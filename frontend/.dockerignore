@@ -1,0 +1,14 @@
+.git
+.gitignore
+node_modules
+dist
+.angular
+coverage
+.env
+.env.*
+*.log
+README.md
+.prettierrc
+.editorconfig
+.vscode
+src/**/*.spec.ts

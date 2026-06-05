@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+README.md
+.prettierrc
+eslint.config.mjs
+.vscode
+test
+src/**/*.spec.ts

@@ -1,0 +1,30 @@
+name: personal-task-manager
+
+services:
+  nginx:
+    container_name: ${COMPOSE_PROJECT_NAME}.nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  backend:
+    container_name: ${COMPOSE_PROJECT_NAME}.backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  frontend:
+    container_name: ${COMPOSE_PROJECT_NAME}.frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
