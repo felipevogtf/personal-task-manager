@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ── */
+:root {
+  --color-base:      #f5f5f8;
+  --color-surface:   #ffffff;
+  --color-raised:    #f0f0f4;
+  --color-line:      #e4e4ea;
+  --color-line-soft: #ededf2;
+  --color-on:        #111118;
+  --color-dim:       #4e4e60;
+  --color-ghost:     #9898aa;
+  --color-tint:      #6366f1;
+  --color-tint-bg:   #eef0ff;
+  --color-tint-dark: #4f46e5;
+  --color-warn:      #d97706;
+  --color-bad:       #dc2626;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-base);
+  color: var(--color-on);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+::selection { background: rgba(99, 102, 241, 0.16); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ghost); }
+
+input, select, textarea { color-scheme: light; font-family: inherit; }
+
+@layer components {
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-[6px] rounded-lg
+           text-[12.5px] font-medium border border-line bg-surface text-dim
+           hover:text-on hover:bg-raised cursor-default select-none whitespace-nowrap
+           transition-colors duration-100
+           disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 px-3 py-[6px] rounded-lg
+           text-[12.5px] font-medium bg-tint text-white
+           hover:bg-tint-dark cursor-default select-none whitespace-nowrap
+           transition-colors duration-100
+           disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-1.5 px-2 py-[6px] rounded-lg
+           text-[12.5px] font-medium text-bad/70 bg-transparent
+           hover:text-bad hover:bg-red-50 cursor-default select-none whitespace-nowrap
+           transition-colors duration-100;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg
+           text-[12.5px] font-medium text-ghost bg-transparent
+           hover:text-dim hover:bg-raised cursor-default select-none
+           transition-colors duration-100;
+  }
+
+  /* ── Form fields ── */
+  .field-input {
+    @apply w-full bg-surface border border-line rounded-lg text-on text-[13px]
+           px-3 py-[6px] outline-none placeholder:text-ghost
+           focus:border-tint/50 transition-colors;
+  }
+
+  .field-select {
+    @apply bg-surface border border-line rounded-lg text-dim text-[12.5px]
+           px-3 py-[6px] outline-none cursor-default
+           hover:text-on focus:border-tint/50 transition-colors;
+  }
+
+  /* ── Priority dots ── */
+  .p-dot { @apply inline-block rounded-full flex-shrink-0 w-[7px] h-[7px]; }
+  .p-dot-urgent { @apply bg-red-500; }
+  .p-dot-high   { @apply bg-orange-400; }
+  .p-dot-medium { @apply bg-amber-400; }
+  .p-dot-low    { @apply bg-blue-400; }
+  .p-dot-none   { @apply bg-line; }
+
+  /* ── Priority badges ── */
+  .priority-badge { @apply inline-block px-1.5 py-px rounded text-[10px] font-medium uppercase tracking-wide; }
+  .priority-urgent { @apply bg-red-50    text-red-600; }
+  .priority-high   { @apply bg-orange-50 text-orange-600; }
+  .priority-medium { @apply bg-amber-50  text-amber-700; }
+  .priority-low    { @apply bg-blue-50   text-blue-600; }
+  .priority-none   { @apply bg-raised    text-ghost; }
+
+  /* ── Label chip ── */
+  .label-chip {
+    @apply inline-block px-1.5 py-px rounded-full text-[10px] font-medium text-white;
+  }
+
+  /* ── Page layout ── */
+  .page-header {
+    @apply flex items-center gap-3 h-14 px-6 border-b border-line-soft
+           flex-shrink-0 bg-surface sticky top-0 z-10;
+  }
+  .page-title {
+    @apply text-[15px] font-semibold text-on;
+  }
+  .page-body {
+    @apply p-6;
+  }
+
+}
+
+/* ── CDK Drag-Drop ── */
+.cdk-drag-preview {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  opacity: 0.97;
+}
+.cdk-drag-placeholder { opacity: 0; }
+.cdk-drop-list-dragging .issue-card:not(.cdk-drag-placeholder) {
+  transition: transform 180ms ease;
+}

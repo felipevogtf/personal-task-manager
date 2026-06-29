@@ -1,6 +1,6 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 
@@ -8,6 +8,7 @@ import { UpdateIssueDto } from './dto/update-issue.dto';
 export class PlaneService {
   private readonly client: AxiosInstance;
   private readonly workspaceSlug: string;
+  private readonly logger = new Logger(PlaneService.name);
 
   constructor(private readonly config: ConfigService) {
     this.workspaceSlug = this.config.getOrThrow<string>('PLANE_WORKSPACE_SLUG');
@@ -21,46 +22,98 @@ export class PlaneService {
     });
   }
 
-  async getProjects() {
-    const { data } = await this.client.get(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/`,
-    );
-    return data;
+  private async call<T>(fn: () => Promise<AxiosResponse<T>>): Promise<T> {
+    try {
+      const { data } = await fn();
+      return data;
+    } catch (err) {
+      if (!axios.isAxiosError(err)) throw err;
+
+      const status = err.response?.status;
+      const body = err.response?.data;
+      const detail: string =
+        body?.detail ?? body?.error ?? body?.message ?? err.message;
+
+      this.logger.error(`Plane API error ${status ?? 'network'}: ${detail}`);
+
+      if (!status) {
+        throw new HttpException(
+          'No se pudo conectar con Plane. Verifica la URL y la red.',
+          HttpStatus.BAD_GATEWAY,
+        );
+      }
+
+      const messages: Record<number, string> = {
+        401: 'API key de Plane inválida o expirada.',
+        403: 'Sin permisos para realizar esta acción en Plane.',
+        404: 'Recurso no encontrado en Plane.',
+        429: 'Límite de requests de Plane alcanzado. Intenta más tarde.',
+      };
+
+      throw new HttpException(
+        messages[status] ?? `Plane respondió con error ${status}: ${detail}`,
+        status >= 400 && status < 500 ? status : HttpStatus.BAD_GATEWAY,
+      );
+    }
   }
 
-  async getIssues(projectId: string) {
-    const { data } = await this.client.get(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
-    );
-    return data;
+  getCurrentUser() {
+    return this.call(() => this.client.get('/api/v1/users/me/'));
   }
 
-  async getIssue(projectId: string, issueId: string) {
-    const { data } = await this.client.get(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+  getProjects() {
+    return this.call(() =>
+      this.client.get(`/api/v1/workspaces/${this.workspaceSlug}/projects/`),
     );
-    return data;
   }
 
-  async createIssue(projectId: string, dto: CreateIssueDto) {
-    const { data } = await this.client.post(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
-      dto,
+  getProjectMembers(projectId: string) {
+    return this.call(() =>
+      this.client.get(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/members/`,
+      ),
     );
-    return data;
   }
 
-  async updateIssue(projectId: string, issueId: string, dto: UpdateIssueDto) {
-    const { data } = await this.client.patch(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
-      dto,
+  getIssues(projectId: string) {
+    return this.call(() =>
+      this.client.get(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
+      ),
     );
-    return data;
+  }
+
+  getIssue(projectId: string, issueId: string) {
+    return this.call(() =>
+      this.client.get(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+      ),
+    );
+  }
+
+  createIssue(projectId: string, dto: CreateIssueDto) {
+    return this.call(() =>
+      this.client.post(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/`,
+        dto,
+      ),
+    );
+  }
+
+  updateIssue(projectId: string, issueId: string, dto: UpdateIssueDto) {
+    return this.call(() =>
+      this.client.patch(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+        dto,
+      ),
+    );
   }
 
   async deleteIssue(projectId: string, issueId: string) {
-    await this.client.delete(
-      `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+    await this.call(() =>
+      this.client.delete(
+        `/api/v1/workspaces/${this.workspaceSlug}/projects/${projectId}/issues/${issueId}/`,
+      ),
     );
   }
 }
