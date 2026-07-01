@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { lastValueFrom } from 'rxjs';
 import { IssuesService } from '../../core/services/issues.service';
 import { ProjectsService } from '../../core/services/projects.service';
 import { StatesService } from '../../core/services/states.service';
 import { IssuePanelComponent } from '../../shared/issue-panel.component';
 import { Issue, Project, State } from '../../models';
+
+interface NewIssueForm { name: string; projectId: string; priority: string; stateId: string; }
 
 interface IssueFilter { projectId: string; stateId: string; noBoard: boolean; }
 
@@ -34,7 +37,54 @@ const PRIORITY_LABELS: Record<string, string> = {
             {{ issuesResource.value()?.length ?? 0 }}
           </span>
         }
+        <button class="btn-primary ml-auto" (click)="creatingIssue.set(!creatingIssue())">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+            <path d="M6 1a.5.5 0 0 1 .5.5V5.5h4a.5.5 0 0 1 0 1H6.5v4a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z"/>
+          </svg>
+          Nueva tarea
+        </button>
       </header>
+
+      <!-- Formulario nueva tarea -->
+      @if (creatingIssue()) {
+        <div class="flex items-center gap-2.5 px-6 py-3 border-b border-line-soft bg-surface flex-wrap flex-shrink-0">
+          <input
+            type="text"
+            class="field-input flex-1 min-w-[240px]"
+            placeholder="Nombre de la tarea…"
+            [value]="newIssue().name"
+            (input)="patchNew('name', $any($event.target).value)" />
+
+          <select class="field-select" [value]="newIssue().projectId" (change)="patchNew('projectId', $any($event.target).value)">
+            <option value="">Proyecto…</option>
+            @for (p of projectsResource.value(); track p.id) {
+              <option [value]="p.id">{{ p.name }}</option>
+            }
+          </select>
+
+          <select class="field-select" [value]="newIssue().priority" (change)="patchNew('priority', $any($event.target).value)">
+            <option value="none">Sin prioridad</option>
+            <option value="urgent">Urgente</option>
+            <option value="high">Alta</option>
+            <option value="medium">Media</option>
+            <option value="low">Baja</option>
+          </select>
+
+          <select class="field-select" [value]="newIssue().stateId" (change)="patchNew('stateId', $any($event.target).value)">
+            <option value="">Sin estado</option>
+            @for (s of statesResource.value(); track s.id) {
+              <option [value]="s.id">{{ s.name }}</option>
+            }
+          </select>
+
+          <div class="flex items-center gap-2">
+            <button class="btn" (click)="cancelCreate()">Cancelar</button>
+            <button class="btn-primary" [disabled]="!newIssue().name.trim() || !newIssue().projectId || creating()" (click)="submitCreate()">
+              {{ creating() ? 'Creando…' : 'Crear' }}
+            </button>
+          </div>
+        </div>
+      }
 
       <!-- Filtros -->
       <div class="flex items-center gap-2 px-6 py-3 border-b border-line-soft bg-surface">
@@ -91,7 +141,9 @@ const PRIORITY_LABELS: Record<string, string> = {
             @for (issue of issuesResource.value(); track issue.id) {
               <tr class="issue-row border-b border-line-soft cursor-pointer" (click)="selected.set(issue)">
                 <td class="py-3 px-4 font-mono text-[11.5px] text-ghost whitespace-nowrap">
-                  {{ issue.project.identifier }}-{{ issue.sequence_id }}
+                  <span [class.text-tint]="issue.is_local">
+                    {{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}
+                  </span>
                 </td>
                 <td class="py-3 px-4 text-[13px] font-medium text-on">{{ issue.name }}</td>
                 <td class="py-3 px-4">
@@ -144,7 +196,8 @@ const PRIORITY_LABELS: Record<string, string> = {
       <app-issue-panel
         [issue]="selected()!"
         (closed)="selected.set(null)"
-        (changed)="onIssueChanged($event)" />
+        (changed)="onIssueChanged($event)"
+        (deleted)="selected.set(null); issuesResource.reload()" />
     }
   `,
   styles: [`
@@ -161,6 +214,9 @@ export class IssuesComponent {
   readonly skeletonRows = [1, 2, 3, 4, 5, 6, 7];
   readonly filter = signal<IssueFilter>({ projectId: '', stateId: '', noBoard: false });
   readonly selected = signal<Issue | null>(null);
+  readonly creatingIssue = signal(false);
+  readonly creating = signal(false);
+  readonly newIssue = signal<NewIssueForm>({ name: '', projectId: '', priority: 'none', stateId: '' });
 
   readonly projectsResource = rxResource<Project[], undefined>({ stream: () => this.projectsService.getAll() });
   readonly statesResource = rxResource<State[], undefined>({ stream: () => this.statesService.getAll() });
@@ -175,6 +231,33 @@ export class IssuesComponent {
 
   patch<K extends keyof IssueFilter>(key: K, value: IssueFilter[K]) {
     this.filter.update(f => ({ ...f, [key]: value }));
+  }
+
+  patchNew<K extends keyof NewIssueForm>(key: K, value: NewIssueForm[K]) {
+    this.newIssue.update(f => ({ ...f, [key]: value }));
+  }
+
+  cancelCreate() {
+    this.creatingIssue.set(false);
+    this.newIssue.set({ name: '', projectId: '', priority: 'none', stateId: '' });
+  }
+
+  async submitCreate() {
+    const f = this.newIssue();
+    if (!f.name.trim() || !f.projectId) return;
+    this.creating.set(true);
+    try {
+      await lastValueFrom(this.issuesService.create({
+        name: f.name.trim(),
+        projectId: f.projectId,
+        priority: f.priority,
+        stateId: f.stateId || undefined,
+      }));
+      this.issuesResource.reload();
+      this.cancelCreate();
+    } finally {
+      this.creating.set(false);
+    }
   }
 
   priorityLabel(priority: string): string {

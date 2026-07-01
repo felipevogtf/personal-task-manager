@@ -30,9 +30,19 @@ const PRIORITY_LABELS: Record<string, string> = {
       <!-- Cabecera -->
       <div class="flex items-center gap-3 h-[52px] px-5 border-b border-line flex-shrink-0">
         <span class="text-[11px] font-mono text-ghost">
-          {{ issue().project.identifier }}-{{ issue().sequence_id }}
+          {{ issue().project.identifier }}-{{ issue().is_local ? 'L' + issue().local_id : issue().sequence_id }}
         </span>
         <div class="ml-auto flex items-center gap-1">
+          @if (issue().is_local) {
+            <button class="close-btn hover:text-bad hover:bg-red-50" title="Eliminar tarea" (click)="deleteIssue()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          }
           <button class="close-btn" (click)="closed.emit()">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
               <path d="M1 1l12 12M13 1L1 13"/>
@@ -45,12 +55,28 @@ const PRIORITY_LABELS: Record<string, string> = {
       <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
 
         <!-- Título + descripción -->
-        <div>
-          <h2 class="text-[15px] font-semibold text-on leading-snug mb-2">{{ issue().name }}</h2>
-          @if (safeDescription()) {
-            <div class="description-html" [innerHTML]="safeDescription()"></div>
+        <div class="flex flex-col gap-2">
+          @if (issue().is_local) {
+            <input
+              type="text"
+              class="field-input text-[15px] font-semibold w-full"
+              [value]="issue().name"
+              (blur)="saveField('name', $any($event.target).value)"
+              (keydown.enter)="$any($event.target).blur()" />
+            <textarea
+              class="field-input w-full text-[13px] resize-none"
+              rows="4"
+              placeholder="Descripción…"
+              [value]="issue().description ?? ''"
+              (blur)="saveField('description', $any($event.target).value || null)">
+            </textarea>
           } @else {
-            <p class="text-[12.5px] text-ghost italic">Sin descripción</p>
+            <h2 class="text-[15px] font-semibold text-on leading-snug">{{ issue().name }}</h2>
+            @if (safeDescription()) {
+              <div class="description-html" [innerHTML]="safeDescription()"></div>
+            } @else {
+              <p class="text-[12.5px] text-ghost italic">Sin descripción</p>
+            }
           }
         </div>
 
@@ -75,10 +101,20 @@ const PRIORITY_LABELS: Record<string, string> = {
           <!-- Prioridad -->
           <div class="prop-row border-b border-line-soft">
             <span class="prop-label">Prioridad</span>
-            <div class="flex items-center gap-2">
-              <span class="p-dot p-dot-{{ issue().priority }}"></span>
-              <span class="text-[12.5px] text-dim">{{ priorityLabel(issue().priority) }}</span>
-            </div>
+            @if (issue().is_local) {
+              <select class="field-select text-[12px]" [value]="issue().priority" (change)="saveField('priority', $any($event.target).value)">
+                <option value="none">Sin prioridad</option>
+                <option value="urgent">Urgente</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+              </select>
+            } @else {
+              <div class="flex items-center gap-2">
+                <span class="p-dot p-dot-{{ issue().priority }}"></span>
+                <span class="text-[12.5px] text-dim">{{ priorityLabel(issue().priority) }}</span>
+              </div>
+            }
           </div>
 
           <!-- Proyecto -->
@@ -325,6 +361,7 @@ export class IssuePanelComponent {
   });
   closed = output();
   changed = output<Issue>();
+  deleted = output();
 
   readonly statesResource = rxResource<State[], undefined>({ stream: () => this.statesService.getAll() });
   readonly labelsResource = rxResource<Label[], undefined>({ stream: () => this.labelsService.getAll() });
@@ -347,6 +384,18 @@ export class IssuePanelComponent {
 
   priorityLabel(priority: string): string {
     return PRIORITY_LABELS[priority] ?? priority;
+  }
+
+  async deleteIssue() {
+    await lastValueFrom(this.issuesService.remove(this.issue().id));
+    this.deleted.emit();
+    this.closed.emit();
+  }
+
+  async saveField(field: 'name' | 'description' | 'priority', value: string | null) {
+    if (field === 'name' && !value?.trim()) return;
+    const updated = await lastValueFrom(this.issuesService.update(this.issue().id, { [field]: value }));
+    if (updated) this.changed.emit(updated);
   }
 
   async changeState(stateId: string) {

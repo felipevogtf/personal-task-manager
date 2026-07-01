@@ -9,8 +9,11 @@ export class Issue {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  plane_id: string;
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  plane_id: string | null;
+
+  @Column({ default: false })
+  is_local: boolean;
 
   @ManyToOne(() => Project, (project) => project.issues, { onDelete: 'CASCADE' })
   project: Project;
@@ -29,6 +32,9 @@ export class Issue {
 
   @Column({ nullable: true })
   sequence_id: number;
+
+  @Column({ nullable: true })
+  local_id: number;
 
   @ManyToOne(() => State, (state) => state.issues, { onDelete: 'SET NULL', nullable: true })
   state: State;

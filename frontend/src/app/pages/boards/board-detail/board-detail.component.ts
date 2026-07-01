@@ -7,8 +7,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from 
 import { BoardsService } from '../../../core/services/boards.service';
 import { StatesService } from '../../../core/services/states.service';
 import { IssuesService } from '../../../core/services/issues.service';
-import { ProjectsService } from '../../../core/services/projects.service';
-import { Board, BoardIssue, Issue, Project, State } from '../../../models';
+import { Board, BoardIssue, Issue, State } from '../../../models';
 import { IssuePanelComponent } from '../../../shared/issue-panel.component';
 
 interface Column { state: State; items: BoardIssue[]; }
@@ -41,21 +40,41 @@ interface Column { state: State; items: BoardIssue[]; }
       <!-- Formulario agregar tarea -->
       @if (addingIssue()) {
         <div class="flex items-center gap-2.5 px-6 py-3 border-b border-line-soft bg-surface flex-wrap flex-shrink-0">
-          <select class="field-select" (change)="addProjectId.set($any($event.target).value); selectedIssueId.set('')">
-            <option value="">Filtrar por proyecto…</option>
-            @for (p of projectsResource.value(); track p.id) {
-              <option [value]="p.id" [selected]="addProjectId() === p.id">{{ p.name }}</option>
-            }
-          </select>
 
-          <select class="field-select flex-1 min-w-[240px]" (change)="selectedIssueId.set($any($event.target).value)">
-            <option value="">Seleccionar tarea…</option>
-            @for (issue of filteredAvailableIssues(); track issue.id) {
-              <option [value]="issue.id" [selected]="selectedIssueId() === issue.id">
-                [{{ issue.project.identifier }}-{{ issue.sequence_id }}] {{ issue.name }}
-              </option>
+          <!-- Autocomplete -->
+          <div class="relative flex-1 min-w-[300px]">
+            <input
+              type="text"
+              class="field-input w-full"
+              placeholder="Buscar por código o nombre… (ej: GL-42)"
+              [value]="searchQuery()"
+              (input)="onSearchInput($any($event.target).value)"
+              (focus)="showDropdown.set(true)"
+              (blur)="onSearchBlur()"
+              (keydown)="onSearchKeydown($event)" />
+
+            @if (showDropdown() && searchResults().length) {
+              <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg overflow-hidden max-h-[280px] overflow-y-auto">
+                @for (issue of searchResults(); track issue.id; let i = $index) {
+                  <div
+                    class="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                    [class.bg-raised]="highlightedIndex() === i"
+                    [class.bg-tint-bg]="selectedIssueId() === issue.id"
+                    (mousedown)="selectIssue(issue)">
+                    <span class="p-dot p-dot-{{ issue.priority }} flex-shrink-0"></span>
+                    <span class="text-[11.5px] font-mono text-ghost flex-shrink-0 w-[64px]">{{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}</span>
+                    <span class="text-[13px] text-on truncate">{{ issue.name }}</span>
+                  </div>
+                }
+              </div>
             }
-          </select>
+
+            @if (showDropdown() && searchQuery() && !searchResults().length) {
+              <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg p-4 text-center text-[12px] text-ghost">
+                Sin resultados para "{{ searchQuery() }}"
+              </div>
+            }
+          </div>
 
           <select class="field-select" (change)="selectedStateId.set($any($event.target).value)">
             <option value="">Columna inicial…</option>
@@ -65,7 +84,7 @@ interface Column { state: State; items: BoardIssue[]; }
           </select>
 
           <div class="flex items-center gap-2">
-            <button class="btn" (click)="addingIssue.set(false); addProjectId.set(''); selectedIssueId.set('')">Cancelar</button>
+            <button class="btn" (click)="cancelAdd()">Cancelar</button>
             <button class="btn-primary" (click)="addIssue()" [disabled]="!selectedIssueId() || !selectedStateId()">Agregar</button>
           </div>
         </div>
@@ -104,7 +123,7 @@ interface Column { state: State; items: BoardIssue[]; }
                     <div class="flex items-center gap-2 flex-wrap">
                       <span class="p-dot p-dot-{{ bi.issue.priority }}"></span>
                       <span class="text-[11px] text-ghost font-mono">
-                        {{ bi.issue.project.identifier }}-{{ bi.issue.sequence_id }}
+                        {{ bi.issue.project.identifier }}-{{ bi.issue.is_local ? 'L' + bi.issue.local_id : bi.issue.sequence_id }}
                       </span>
                       @if (bi.issue.labels.length) {
                         @for (label of bi.issue.labels; track label.id) {
@@ -148,7 +167,8 @@ interface Column { state: State; items: BoardIssue[]; }
       <app-issue-panel
         [issue]="selected()!"
         (closed)="selected.set(null)"
-        (changed)="onIssueChanged($event)" />
+        (changed)="onIssueChanged($event)"
+        (deleted)="selected.set(null); boardResource.reload()" />
     }
   `,
   styles: [`
@@ -188,17 +208,17 @@ export class BoardDetailComponent {
   private readonly boardsService = inject(BoardsService);
   private readonly statesService = inject(StatesService);
   private readonly issuesService = inject(IssuesService);
-  private readonly projectsService = inject(ProjectsService);
   private readonly boardId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
 
   readonly addingIssue = signal(false);
   readonly selectedIssueId = signal('');
   readonly selectedStateId = signal('');
   readonly selected = signal<Issue | null>(null);
-  readonly addProjectId = signal('');
+  readonly searchQuery = signal('');
+  readonly showDropdown = signal(false);
+  readonly highlightedIndex = signal(-1);
 
   readonly statesResource = rxResource<State[], undefined>({ stream: () => this.statesService.getAll() });
-  readonly projectsResource = rxResource<Project[], undefined>({ stream: () => this.projectsService.getAll() });
   readonly allIssuesResource = rxResource<Issue[], undefined>({ stream: () => this.issuesService.getAll() });
   readonly boardResource = rxResource<Board, undefined>({ stream: () => this.boardsService.getOne(this.boardId) });
 
@@ -219,11 +239,57 @@ export class BoardDetailComponent {
     return (this.allIssuesResource.value() ?? []).filter((i: Issue) => !inBoard.has(i.id));
   });
 
-  readonly filteredAvailableIssues = computed(() => {
-    const pid = this.addProjectId();
-    if (!pid) return this.availableIssues();
-    return this.availableIssues().filter(i => i.project.id === pid);
+  readonly searchResults = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    const issues = this.availableIssues();
+    if (!q) return issues.slice(0, 30);
+    return issues.filter(i => {
+      const code = `${i.project.identifier}-${i.is_local ? 'l' + i.local_id : i.sequence_id}`.toLowerCase();
+      return code.includes(q) || i.name.toLowerCase().includes(q);
+    }).slice(0, 30);
   });
+
+  onSearchInput(value: string) {
+    this.searchQuery.set(value);
+    this.selectedIssueId.set('');
+    this.showDropdown.set(true);
+    this.highlightedIndex.set(-1);
+  }
+
+  onSearchBlur() {
+    setTimeout(() => this.showDropdown.set(false), 150);
+  }
+
+  onSearchKeydown(event: KeyboardEvent) {
+    const results = this.searchResults();
+    const idx = this.highlightedIndex();
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.highlightedIndex.set(Math.min(idx + 1, results.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.highlightedIndex.set(Math.max(idx - 1, -1));
+    } else if (event.key === 'Enter' && idx >= 0) {
+      event.preventDefault();
+      this.selectIssue(results[idx]);
+    } else if (event.key === 'Escape') {
+      this.showDropdown.set(false);
+    }
+  }
+
+  selectIssue(issue: Issue) {
+    this.selectedIssueId.set(issue.id);
+    this.searchQuery.set(`${issue.project.identifier}-${issue.is_local ? 'L' + issue.local_id : issue.sequence_id}  ${issue.name}`);
+    this.showDropdown.set(false);
+  }
+
+  cancelAdd() {
+    this.addingIssue.set(false);
+    this.searchQuery.set('');
+    this.selectedIssueId.set('');
+    this.selectedStateId.set('');
+    this.showDropdown.set(false);
+  }
 
   priorityLabel(priority: string): string {
     const labels: Record<string, string> = { urgent: 'Urgente', high: 'Alta', medium: 'Media', low: 'Baja', none: '—' };
@@ -234,9 +300,7 @@ export class BoardDetailComponent {
     await lastValueFrom(this.boardsService.addIssue(this.boardId, this.selectedIssueId(), this.selectedStateId()));
     this.boardResource.reload();
     this.allIssuesResource.reload();
-    this.addingIssue.set(false);
-    this.selectedIssueId.set('');
-    this.selectedStateId.set('');
+    this.cancelAdd();
   }
 
   async removeIssue(bi: BoardIssue) {

@@ -43,7 +43,7 @@ export class IssuesService {
     return this.findOne(id);
   }
 
-  async update(id: string, dto: { start_date?: string | null; due_date?: string | null; hours_worked?: number | null }) {
+  async update(id: string, dto: { name?: string; description?: string | null; priority?: string; start_date?: string | null; due_date?: string | null; hours_worked?: number | null }) {
     const issue = await this.repo.findOneBy({ id });
     if (!issue) return null;
     Object.assign(issue, dto);
@@ -74,6 +74,31 @@ export class IssuesService {
       }
     }
     return this.findAll(project.id);
+  }
+
+  async remove(id: string) {
+    await this.repo.delete({ id, is_local: true });
+  }
+
+  async create(dto: { name: string; projectId: string; priority?: string; stateId?: string | null; description?: string }) {
+    const row = await this.repo
+      .createQueryBuilder('issue')
+      .where('issue.projectId = :pid', { pid: dto.projectId })
+      .select('MAX(issue.local_id)', 'max')
+      .getRawOne<{ max: number | null }>();
+
+    const issue = this.repo.create({
+      is_local: true,
+      is_mine: true,
+      name: dto.name,
+      description: dto.description ?? undefined,
+      priority: dto.priority ?? 'none',
+      local_id: (row?.max ?? 0) + 1,
+      project: { id: dto.projectId } as any,
+      state: dto.stateId ? ({ id: dto.stateId } as any) : undefined,
+    });
+    await this.repo.save(issue);
+    return this.findOne(issue.id);
   }
 
   async assignLabels(id: string, labelIds: string[]) {

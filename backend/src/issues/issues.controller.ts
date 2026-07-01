@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Put, Query, ParseBoolPipe, Optional } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { IssuesService } from './issues.service';
 
 @Controller('issues')
@@ -15,6 +15,11 @@ export class IssuesController {
     return this.issuesService.findAll(projectId, mine === 'true', stateId, noBoard === 'true');
   }
 
+  @Post()
+  create(@Body() body: { name: string; projectId: string; priority?: string; stateId?: string; description?: string }) {
+    return this.issuesService.create(body);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.issuesService.findOne(id);
@@ -23,9 +28,15 @@ export class IssuesController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() body: { start_date?: string | null; due_date?: string | null; hours_worked?: number | null },
+    @Body() body: { name?: string; description?: string | null; priority?: string; start_date?: string | null; due_date?: string | null; hours_worked?: number | null },
   ) {
     return this.issuesService.update(id, body);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id') id: string) {
+    return this.issuesService.remove(id);
   }
 
   @Patch(':id/state')

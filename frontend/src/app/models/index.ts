@@ -36,7 +36,9 @@ export interface DashboardSummary {
     issue: {
       id: string;
       name: string;
-      sequence_id: number;
+      sequence_id: number | null;
+      local_id: number | null;
+      is_local: boolean;
       project: { id: string; name: string; identifier: string };
     };
     totalHours: number;
@@ -46,12 +48,14 @@ export interface DashboardSummary {
 
 export interface Issue {
   id: string;
-  plane_id: string;
+  plane_id: string | null;
+  is_local: boolean;
   name: string;
-  description: string;
+  description: string | null;
   priority: string;
   plane_state: string;
-  sequence_id: number;
+  sequence_id: number | null;
+  local_id: number | null;
   project: Project;
   state: State | null;
   labels: Label[];

@@ -108,7 +108,7 @@ interface DateRange { from: string; to: string; }
                     <div class="flex items-start justify-between gap-4 mb-2">
                       <div class="flex items-center gap-2.5 min-w-0">
                         <span class="text-[11.5px] font-mono text-ghost flex-shrink-0">
-                          {{ item.issue.project.identifier }}-{{ item.issue.sequence_id }}
+                          {{ item.issue.project.identifier }}-{{ item.issue.is_local ? 'L' + item.issue.local_id : item.issue.sequence_id }}
                         </span>
                         <span class="text-[13px] font-medium text-on truncate">{{ item.issue.name }}</span>
                       </div>
