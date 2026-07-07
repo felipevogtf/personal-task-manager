@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { lastValueFrom } from 'rxjs';
@@ -9,8 +9,8 @@ import { IssuePanelComponent } from '../../shared/issue-panel.component';
 import { Issue, Project, State } from '../../models';
 
 interface NewIssueForm { name: string; projectId: string; priority: string; stateId: string; }
-
 interface IssueFilter { projectId: string; stateId: string; noBoard: boolean; }
+interface IssueGroup { projectId: string; projectName: string; issues: Issue[]; }
 
 const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Urgente',
@@ -34,7 +34,7 @@ const PRIORITY_LABELS: Record<string, string> = {
           <span class="w-3.5 h-3.5 rounded-full border-2 border-ghost/30 border-t-ghost animate-spin inline-block ml-1"></span>
         } @else {
           <span class="text-[12px] text-ghost bg-raised px-2 py-0.5 rounded-full ml-1 font-mono tabular-nums">
-            {{ issuesResource.value()?.length ?? 0 }}
+            {{ filteredIssues().length }}
           </span>
         }
         <button class="btn-primary ml-auto" (click)="creatingIssue.set(!creatingIssue())">
@@ -87,7 +87,18 @@ const PRIORITY_LABELS: Record<string, string> = {
       }
 
       <!-- Filtros -->
-      <div class="flex items-center gap-2 px-6 py-3 border-b border-line-soft bg-surface">
+      <div class="flex items-center gap-2 px-6 py-3 border-b border-line-soft bg-surface flex-wrap">
+        <div class="relative flex-1 min-w-[200px]">
+          <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ghost pointer-events-none" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L14 14"/>
+          </svg>
+          <input
+            type="text"
+            class="field-input w-full pl-8 text-[12.5px]"
+            placeholder="Buscar por código o nombre…"
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)" />
+        </div>
         <select class="field-select text-[12.5px]" [value]="filter().projectId" (change)="patch('projectId', $any($event.target).value)">
           <option value="">Todos los proyectos</option>
           @for (p of projectsResource.value(); track p.id) {
@@ -138,53 +149,71 @@ const PRIORITY_LABELS: Record<string, string> = {
                 </tr>
               }
             }
-            @for (issue of issuesResource.value(); track issue.id) {
-              <tr class="issue-row border-b border-line-soft cursor-pointer" (click)="selected.set(issue)">
-                <td class="py-3 px-4 font-mono text-[11.5px] text-ghost whitespace-nowrap">
-                  <span [class.text-tint]="issue.is_local">
-                    {{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}
-                  </span>
-                </td>
-                <td class="py-3 px-4 text-[13px] font-medium text-on">{{ issue.name }}</td>
-                <td class="py-3 px-4">
+            @for (group of groupedIssues(); track group.projectId) {
+              <!-- Cabecera de grupo -->
+              <tr class="group-header cursor-pointer select-none" (click)="toggleProject(group.projectId)">
+                <td colspan="5" class="px-4 py-2.5 border-b border-line-soft">
                   <div class="flex items-center gap-2">
-                    <span class="p-dot p-dot-{{ issue.priority }}"></span>
-                    @if (issue.priority && issue.priority !== 'none') {
-                      <span class="text-[12px] text-dim">{{ priorityLabel(issue.priority) }}</span>
-                    } @else {
-                      <span class="text-[12px] text-ghost">—</span>
-                    }
+                    <svg
+                      class="flex-shrink-0 transition-transform duration-150 text-ghost"
+                      [style.transform]="collapsedProjects().has(group.projectId) ? 'rotate(-90deg)' : 'rotate(0deg)'"
+                      width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 4l4 4 4-4"/>
+                    </svg>
+                    <span class="text-[12px] font-semibold text-dim">{{ group.projectName }}</span>
+                    <span class="text-[11px] text-ghost font-mono bg-raised px-1.5 py-0.5 rounded-full">{{ group.issues.length }}</span>
                   </div>
                 </td>
-                <td class="py-3 px-4">
-                  @if (issue.state) {
-                    <span
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium"
-                      [style.background]="issue.state.color + '18'"
-                      [style.color]="issue.state.color">
-                      <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [style.background]="issue.state.color"></span>
-                      {{ issue.state.name }}
-                    </span>
-                  } @else {
-                    <span class="text-[12px] text-ghost">—</span>
-                  }
-                </td>
-                <td class="py-3 px-4 text-[12px] text-ghost whitespace-nowrap">
-                  @if (issue.start_date || issue.due_date) {
-                    {{ issue.start_date ?? '?' }} → {{ issue.due_date ?? '?' }}
-                  } @else { — }
+              </tr>
+              <!-- Filas del grupo -->
+              @if (!collapsedProjects().has(group.projectId)) {
+                @for (issue of group.issues; track issue.id) {
+                  <tr class="issue-row border-b border-line-soft cursor-pointer" (click)="selected.set(issue)">
+                    <td class="py-3 px-4 font-mono text-[11.5px] text-ghost whitespace-nowrap">
+                      <span [class.text-tint]="issue.is_local">
+                        {{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-[13px] font-medium text-on">{{ issue.name }}</td>
+                    <td class="py-3 px-4">
+                      <div class="flex items-center gap-2">
+                        <span class="p-dot p-dot-{{ issue.priority }}"></span>
+                        @if (issue.priority && issue.priority !== 'none') {
+                          <span class="text-[12px] text-dim">{{ priorityLabel(issue.priority) }}</span>
+                        } @else {
+                          <span class="text-[12px] text-ghost">—</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="py-3 px-4">
+                      @if (issue.state) {
+                        <span
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium"
+                          [style.background]="issue.state.color + '18'"
+                          [style.color]="issue.state.color">
+                          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [style.background]="issue.state.color"></span>
+                          {{ issue.state.name }}
+                        </span>
+                      } @else {
+                        <span class="text-[12px] text-ghost">—</span>
+                      }
+                    </td>
+                    <td class="py-3 px-4 text-[12px] text-ghost whitespace-nowrap">
+                      @if (issue.start_date || issue.due_date) {
+                        {{ issue.start_date ?? '?' }} → {{ issue.due_date ?? '?' }}
+                      } @else { — }
+                    </td>
+                  </tr>
+                }
+              }
+            }
+            @if (!issuesResource.isLoading() && !groupedIssues().length) {
+              <tr>
+                <td colspan="5" class="py-20 text-center">
+                  <p class="text-[13px] font-medium text-dim mb-1">Sin tareas</p>
+                  <p class="text-[12px] text-ghost">Ajustá los filtros o sincronizá un proyecto</p>
                 </td>
               </tr>
-            }
-            @empty {
-              @if (!issuesResource.isLoading()) {
-                <tr>
-                  <td colspan="5" class="py-20 text-center">
-                    <p class="text-[13px] font-medium text-dim mb-1">Sin tareas</p>
-                    <p class="text-[12px] text-ghost">Ajustá los filtros o sincronizá un proyecto</p>
-                  </td>
-                </tr>
-              }
             }
           </tbody>
         </table>
@@ -204,6 +233,8 @@ const PRIORITY_LABELS: Record<string, string> = {
     :host { display: flex; flex-direction: column; height: 100%; }
     .issue-row { transition: background 0.1s; }
     .issue-row:hover td { background: var(--color-raised); }
+    .group-header td { background: var(--color-base); }
+    .group-header:hover td { background: var(--color-raised); }
   `],
 })
 export class IssuesComponent {
@@ -214,6 +245,37 @@ export class IssuesComponent {
   readonly skeletonRows = [1, 2, 3, 4, 5, 6, 7];
   readonly filter = signal<IssueFilter>({ projectId: '', stateId: '', noBoard: false });
   readonly selected = signal<Issue | null>(null);
+  readonly searchQuery = signal('');
+
+  readonly filteredIssues = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    const issues = this.issuesResource.value() ?? [];
+    if (!q) return issues;
+    return issues.filter(i => {
+      const code = `${i.project.identifier}-${i.is_local ? 'l' + i.local_id : i.sequence_id}`.toLowerCase();
+      return code.includes(q) || i.name.toLowerCase().includes(q);
+    });
+  });
+
+  readonly groupedIssues = computed((): IssueGroup[] => {
+    const map = new Map<string, IssueGroup>();
+    for (const issue of this.filteredIssues()) {
+      const pid = issue.project.id;
+      if (!map.has(pid)) map.set(pid, { projectId: pid, projectName: issue.project.name, issues: [] });
+      map.get(pid)!.issues.push(issue);
+    }
+    return [...map.values()].sort((a, b) => a.projectName.localeCompare(b.projectName));
+  });
+
+  readonly collapsedProjects = signal<Set<string>>(new Set());
+
+  toggleProject(projectId: string) {
+    this.collapsedProjects.update(s => {
+      const next = new Set(s);
+      next.has(projectId) ? next.delete(projectId) : next.add(projectId);
+      return next;
+    });
+  }
   readonly creatingIssue = signal(false);
   readonly creating = signal(false);
   readonly newIssue = signal<NewIssueForm>({ name: '', projectId: '', priority: 'none', stateId: '' });

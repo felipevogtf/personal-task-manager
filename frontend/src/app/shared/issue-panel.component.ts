@@ -424,6 +424,10 @@ export class IssuePanelComponent {
     await lastValueFrom(this.timeEntriesService.create(this.issue().id, { date, hours }));
     this.newHours.set(null);
     this.timeEntriesResource.reload();
+    if (!this.issue().start_date) {
+      const updated = await lastValueFrom(this.issuesService.update(this.issue().id, { start_date: date }));
+      if (updated) this.changed.emit(updated);
+    }
   }
 
   async removeEntry(id: string) {

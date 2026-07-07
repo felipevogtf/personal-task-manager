@@ -65,6 +65,24 @@ export interface Issue {
   synced_at: string;
 }
 
+export interface PasswordField {
+  id: string;
+  key: string | null;
+  value_enc: string;
+  is_sensitive: boolean;
+  sort_order: number;
+}
+
+export interface Password {
+  id: string;
+  name: string;
+  type: 'single' | 'group';
+  category: string | null;
+  fields: PasswordField[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface BoardIssue {
   id: string;
   issue: Issue;

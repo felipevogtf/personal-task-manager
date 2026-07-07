@@ -9,4 +9,5 @@ export const routes: Routes = [
   { path: 'labels', loadComponent: () => import('./pages/labels/labels.component').then(m => m.LabelsComponent) },
   { path: 'boards', loadComponent: () => import('./pages/boards/boards.component').then(m => m.BoardsComponent) },
   { path: 'boards/:id', loadComponent: () => import('./pages/boards/board-detail/board-detail.component').then(m => m.BoardDetailComponent) },
+  { path: 'passwords', loadComponent: () => import('./pages/passwords/passwords.component').then(m => m.PasswordsComponent) },
 ];

@@ -7,7 +7,8 @@ import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from 
 import { BoardsService } from '../../../core/services/boards.service';
 import { StatesService } from '../../../core/services/states.service';
 import { IssuesService } from '../../../core/services/issues.service';
-import { Board, BoardIssue, Issue, State } from '../../../models';
+import { ProjectsService } from '../../../core/services/projects.service';
+import { Board, BoardIssue, Issue, Project, State } from '../../../models';
 import { IssuePanelComponent } from '../../../shared/issue-panel.component';
 
 interface Column { state: State; items: BoardIssue[]; }
@@ -39,53 +40,119 @@ interface Column { state: State; items: BoardIssue[]; }
 
       <!-- Formulario agregar tarea -->
       @if (addingIssue()) {
-        <div class="flex items-center gap-2.5 px-6 py-3 border-b border-line-soft bg-surface flex-wrap flex-shrink-0">
+        <div class="flex flex-col gap-0 border-b border-line-soft bg-surface flex-shrink-0">
 
-          <!-- Autocomplete -->
-          <div class="relative flex-1 min-w-[300px]">
-            <input
-              type="text"
-              class="field-input w-full"
-              placeholder="Buscar por código o nombre… (ej: GL-42)"
-              [value]="searchQuery()"
-              (input)="onSearchInput($any($event.target).value)"
-              (focus)="showDropdown.set(true)"
-              (blur)="onSearchBlur()"
-              (keydown)="onSearchKeydown($event)" />
+          <!-- Tabs modo -->
+          <div class="flex items-center gap-0 border-b border-line-soft px-6 pt-2">
+            <button
+              class="px-3 py-2 text-[12px] font-medium border-b-2 transition-colors mr-1"
+              [class.border-tint]="addMode() === 'search'"
+              [class.text-tint]="addMode() === 'search'"
+              [class.border-transparent]="addMode() !== 'search'"
+              [class.text-ghost]="addMode() !== 'search'"
+              (click)="addMode.set('search')">
+              Buscar existente
+            </button>
+            <button
+              class="px-3 py-2 text-[12px] font-medium border-b-2 transition-colors"
+              [class.border-tint]="addMode() === 'create'"
+              [class.text-tint]="addMode() === 'create'"
+              [class.border-transparent]="addMode() !== 'create'"
+              [class.text-ghost]="addMode() !== 'create'"
+              (click)="addMode.set('create')">
+              Crear nueva
+            </button>
+          </div>
 
-            @if (showDropdown() && searchResults().length) {
-              <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg overflow-hidden max-h-[280px] overflow-y-auto">
-                @for (issue of searchResults(); track issue.id; let i = $index) {
-                  <div
-                    class="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
-                    [class.bg-raised]="highlightedIndex() === i"
-                    [class.bg-tint-bg]="selectedIssueId() === issue.id"
-                    (mousedown)="selectIssue(issue)">
-                    <span class="p-dot p-dot-{{ issue.priority }} flex-shrink-0"></span>
-                    <span class="text-[11.5px] font-mono text-ghost flex-shrink-0 w-[64px]">{{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}</span>
-                    <span class="text-[13px] text-on truncate">{{ issue.name }}</span>
+          <div class="flex items-center gap-2.5 px-6 py-3 flex-wrap">
+
+            @if (addMode() === 'search') {
+              <!-- Autocomplete -->
+              <div class="relative flex-1 min-w-[300px]">
+                <input
+                  type="text"
+                  class="field-input w-full"
+                  placeholder="Buscar por código o nombre… (ej: GL-42)"
+                  [value]="searchQuery()"
+                  (input)="onSearchInput($any($event.target).value)"
+                  (focus)="showDropdown.set(true)"
+                  (blur)="onSearchBlur()"
+                  (keydown)="onSearchKeydown($event)" />
+
+                @if (showDropdown() && searchResults().length) {
+                  <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg overflow-hidden max-h-[280px] overflow-y-auto">
+                    @for (issue of searchResults(); track issue.id; let i = $index) {
+                      <div
+                        class="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors"
+                        [class.bg-raised]="highlightedIndex() === i"
+                        [class.bg-tint-bg]="selectedIssueId() === issue.id"
+                        (mousedown)="selectIssue(issue)">
+                        <span class="p-dot p-dot-{{ issue.priority }} flex-shrink-0"></span>
+                        <span class="text-[11.5px] font-mono text-ghost flex-shrink-0 w-[64px]">{{ issue.project.identifier }}-{{ issue.is_local ? 'L' + issue.local_id : issue.sequence_id }}</span>
+                        <span class="text-[13px] text-on truncate">{{ issue.name }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+
+                @if (showDropdown() && searchQuery() && !searchResults().length) {
+                  <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg p-4 text-center text-[12px] text-ghost">
+                    Sin resultados para "{{ searchQuery() }}"
                   </div>
                 }
               </div>
-            }
 
-            @if (showDropdown() && searchQuery() && !searchResults().length) {
-              <div class="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-line rounded-xl shadow-lg p-4 text-center text-[12px] text-ghost">
-                Sin resultados para "{{ searchQuery() }}"
+              <select class="field-select" (change)="selectedStateId.set($any($event.target).value)">
+                <option value="">Columna inicial…</option>
+                @for (state of statesResource.value(); track state.id) {
+                  <option [value]="state.id" [selected]="selectedStateId() === state.id">{{ state.name }}</option>
+                }
+              </select>
+
+              <div class="flex items-center gap-2">
+                <button class="btn" (click)="cancelAdd()">Cancelar</button>
+                <button class="btn-primary" (click)="addIssue()" [disabled]="!selectedIssueId() || !selectedStateId()">Agregar</button>
               </div>
             }
-          </div>
 
-          <select class="field-select" (change)="selectedStateId.set($any($event.target).value)">
-            <option value="">Columna inicial…</option>
-            @for (state of statesResource.value(); track state.id) {
-              <option [value]="state.id" [selected]="selectedStateId() === state.id">{{ state.name }}</option>
+            @if (addMode() === 'create') {
+              <input
+                type="text"
+                class="field-input flex-1 min-w-[240px]"
+                placeholder="Nombre de la tarea…"
+                [value]="newName()"
+                (input)="newName.set($any($event.target).value)" />
+
+              <select class="field-select" (change)="newProjectId.set($any($event.target).value)">
+                <option value="">Proyecto…</option>
+                @for (p of projectsResource.value(); track p.id) {
+                  <option [value]="p.id" [selected]="newProjectId() === p.id">{{ p.name }}</option>
+                }
+              </select>
+
+              <select class="field-select" (change)="newPriority.set($any($event.target).value)">
+                <option value="none">Sin prioridad</option>
+                <option value="urgent">Urgente</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+              </select>
+
+              <select class="field-select" (change)="selectedStateId.set($any($event.target).value)">
+                <option value="">Columna…</option>
+                @for (state of statesResource.value(); track state.id) {
+                  <option [value]="state.id" [selected]="selectedStateId() === state.id">{{ state.name }}</option>
+                }
+              </select>
+
+              <div class="flex items-center gap-2">
+                <button class="btn" (click)="cancelAdd()">Cancelar</button>
+                <button class="btn-primary" (click)="createAndAdd()" [disabled]="!newName().trim() || !newProjectId() || !selectedStateId() || creating()">
+                  {{ creating() ? 'Creando…' : 'Crear' }}
+                </button>
+              </div>
             }
-          </select>
 
-          <div class="flex items-center gap-2">
-            <button class="btn" (click)="cancelAdd()">Cancelar</button>
-            <button class="btn-primary" (click)="addIssue()" [disabled]="!selectedIssueId() || !selectedStateId()">Agregar</button>
           </div>
         </div>
       }
@@ -129,6 +196,12 @@ interface Column { state: State; items: BoardIssue[]; }
                         @for (label of bi.issue.labels; track label.id) {
                           <span class="label-chip" [style.background]="label.color">{{ label.name }}</span>
                         }
+                      }
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                      <span class="text-[10px] font-medium text-ghost bg-raised border border-line-soft px-1.5 py-0.5 rounded-md">{{ bi.issue.project.name }}</span>
+                      @if (bi.issue.is_local) {
+                        <span class="text-[10px] font-semibold text-tint bg-tint-bg px-1.5 py-0.5 rounded-md">local</span>
                       }
                     </div>
 
@@ -208,18 +281,25 @@ export class BoardDetailComponent {
   private readonly boardsService = inject(BoardsService);
   private readonly statesService = inject(StatesService);
   private readonly issuesService = inject(IssuesService);
+  private readonly projectsService = inject(ProjectsService);
   private readonly boardId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
 
   readonly addingIssue = signal(false);
+  readonly addMode = signal<'search' | 'create'>('search');
   readonly selectedIssueId = signal('');
   readonly selectedStateId = signal('');
   readonly selected = signal<Issue | null>(null);
   readonly searchQuery = signal('');
   readonly showDropdown = signal(false);
   readonly highlightedIndex = signal(-1);
+  readonly newName = signal('');
+  readonly newProjectId = signal('');
+  readonly newPriority = signal('none');
+  readonly creating = signal(false);
 
   readonly statesResource = rxResource<State[], undefined>({ stream: () => this.statesService.getAll() });
   readonly allIssuesResource = rxResource<Issue[], undefined>({ stream: () => this.issuesService.getAll() });
+  readonly projectsResource = rxResource<Project[], undefined>({ stream: () => this.projectsService.getAll() });
   readonly boardResource = rxResource<Board, undefined>({ stream: () => this.boardsService.getOne(this.boardId) });
 
   readonly columns = computed<Column[]>(() => {
@@ -285,10 +365,35 @@ export class BoardDetailComponent {
 
   cancelAdd() {
     this.addingIssue.set(false);
+    this.addMode.set('search');
     this.searchQuery.set('');
     this.selectedIssueId.set('');
     this.selectedStateId.set('');
     this.showDropdown.set(false);
+    this.newName.set('');
+    this.newProjectId.set('');
+    this.newPriority.set('none');
+  }
+
+  async createAndAdd() {
+    if (!this.newName().trim() || !this.newProjectId() || !this.selectedStateId()) return;
+    this.creating.set(true);
+    try {
+      const issue = await lastValueFrom(this.issuesService.create({
+        name: this.newName().trim(),
+        projectId: this.newProjectId(),
+        priority: this.newPriority(),
+        stateId: this.selectedStateId(),
+      }));
+      if (issue) {
+        await lastValueFrom(this.boardsService.addIssue(this.boardId, issue.id, this.selectedStateId()));
+        this.boardResource.reload();
+        this.allIssuesResource.reload();
+        this.cancelAdd();
+      }
+    } finally {
+      this.creating.set(false);
+    }
   }
 
   priorityLabel(priority: string): string {

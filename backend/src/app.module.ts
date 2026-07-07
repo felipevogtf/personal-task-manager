@@ -8,6 +8,9 @@ import { Label } from './labels/entities/label.entity';
 import { Board } from './boards/entities/board.entity';
 import { BoardIssue } from './boards/entities/board-issue.entity';
 import { TimeEntry } from './time-entries/entities/time-entry.entity';
+import { Password } from './passwords/entities/password.entity';
+import { PasswordField } from './passwords/entities/password-field.entity';
+import { PasswordsModule } from './passwords/passwords.module';
 import { ProjectsModule } from './projects/projects.module';
 import { IssuesModule } from './issues/issues.module';
 import { StatesModule } from './states/states.module';
@@ -24,7 +27,7 @@ import { TimeEntriesModule } from './time-entries/time-entries.module';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.getOrThrow<string>('DATABASE_URL'),
-        entities: [Project, Issue, State, Label, Board, BoardIssue, TimeEntry],
+        entities: [Project, Issue, State, Label, Board, BoardIssue, TimeEntry, Password, PasswordField],
         synchronize: true,
       }),
     }),
@@ -35,6 +38,7 @@ import { TimeEntriesModule } from './time-entries/time-entries.module';
     BoardsModule,
     SyncModule,
     TimeEntriesModule,
+    PasswordsModule,
   ],
 })
 export class AppModule {}

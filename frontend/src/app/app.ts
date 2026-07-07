@@ -67,6 +67,15 @@ import { RouterModule } from '@angular/router';
             </svg>
             <span>Tableros</span>
           </a>
+
+          <a routerLink="/passwords" routerLinkActive="is-active" class="nav-item">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7">
+              <rect x="3" y="8" width="10" height="7" rx="1.5"/>
+              <path d="M5 8V5.5a3 3 0 0 1 6 0V8"/>
+              <circle cx="8" cy="12" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+            <span>Contraseñas</span>
+          </a>
         </div>
 
         <!-- Config nav -->

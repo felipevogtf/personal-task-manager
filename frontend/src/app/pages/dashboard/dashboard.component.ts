@@ -1,8 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { TimeEntriesService } from '../../core/services/time-entries.service';
 import { DashboardSummary } from '../../models';
+
+function weekRange(): { from: string; to: string } {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const from = new Date(now);
+  from.setDate(now.getDate() + mondayOffset);
+  const to = new Date(from);
+  to.setDate(from.getDate() + 6);
+  return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+}
 
 function monthRange(): { from: string; to: string } {
   const now = new Date();
@@ -12,6 +23,9 @@ function monthRange(): { from: string; to: string } {
 }
 
 interface DateRange { from: string; to: string; }
+type Preset = 'week' | 'month' | 'custom';
+type ByIssueItem = DashboardSummary['byIssue'][number];
+interface ProjectGroup { projectId: string; projectName: string; totalHours: number; items: ByIssueItem[]; }
 
 @Component({
   selector: 'app-dashboard',
@@ -24,19 +38,35 @@ interface DateRange { from: string; to: string; }
       <header class="page-header">
         <h1 class="page-title">Dashboard</h1>
         <div class="ml-auto flex items-center gap-2">
-          <label class="flex items-center gap-2 text-[12px] text-ghost">
+          <div class="flex items-center border border-line rounded-lg overflow-hidden text-[12px]">
+            <button
+              class="px-3 h-[30px] transition-colors"
+              [class.bg-tint]="preset() === 'week'"
+              [class.text-white]="preset() === 'week'"
+              [class.text-ghost]="preset() !== 'week'"
+              [class.hover:bg-raised]="preset() !== 'week'"
+              (click)="setPreset('week')">Esta semana</button>
+            <span class="w-px h-4 bg-line"></span>
+            <button
+              class="px-3 h-[30px] transition-colors"
+              [class.bg-tint]="preset() === 'month'"
+              [class.text-white]="preset() === 'month'"
+              [class.text-ghost]="preset() !== 'month'"
+              [class.hover:bg-raised]="preset() !== 'month'"
+              (click)="setPreset('month')">Este mes</button>
+          </div>
+          <label class="flex items-center gap-1.5 text-[12px] text-ghost">
             Desde
-            <input type="date" class="field-input w-[150px] text-[12.5px]"
+            <input type="date" class="field-input w-[140px] text-[12px]"
               [value]="range().from"
               (change)="setFrom($any($event.target).value)" />
           </label>
-          <label class="flex items-center gap-2 text-[12px] text-ghost">
+          <label class="flex items-center gap-1.5 text-[12px] text-ghost">
             Hasta
-            <input type="date" class="field-input w-[150px] text-[12.5px]"
+            <input type="date" class="field-input w-[140px] text-[12px]"
               [value]="range().to"
               (change)="setTo($any($event.target).value)" />
           </label>
-          <button class="btn" (click)="resetToMonth()">Este mes</button>
         </div>
       </header>
 
@@ -96,41 +126,54 @@ interface DateRange { from: string; to: string; }
             </div>
           }
 
-          <!-- Tareas trabajadas -->
+          <!-- Tareas trabajadas agrupadas por proyecto -->
           @if (s.byIssue.length) {
-            <div class="bg-surface border border-line rounded-xl overflow-hidden">
-              <div class="px-5 py-4 border-b border-line-soft">
-                <h2 class="text-[12.5px] font-semibold text-on">Tareas</h2>
-              </div>
-              <div class="divide-y divide-line-soft">
-                @for (item of s.byIssue; track item.issue.id) {
-                  <div class="px-5 py-4">
-                    <div class="flex items-start justify-between gap-4 mb-2">
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="text-[11.5px] font-mono text-ghost flex-shrink-0">
-                          {{ item.issue.project.identifier }}-{{ item.issue.is_local ? 'L' + item.issue.local_id : item.issue.sequence_id }}
-                        </span>
-                        <span class="text-[13px] font-medium text-on truncate">{{ item.issue.name }}</span>
-                      </div>
-                      <span class="text-[14px] font-semibold text-tint flex-shrink-0 tabular-nums">
-                        {{ item.totalHours | number:'1.0-1' }}h
-                      </span>
-                    </div>
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 ml-[calc(var(--mono-w,0px)+10px)]">
-                      @for (entry of item.entries; track entry.id) {
-                        <span class="text-[11.5px] text-ghost">
-                          {{ entry.date | date:'d MMM' }}
-                          <span class="text-dim font-medium">{{ entry.hours | number:'1.0-1' }}h</span>
-                          @if (entry.note) {
-                            <span class="italic"> — {{ entry.note }}</span>
+            @for (group of projectGroups(); track group.projectId) {
+              <div class="bg-surface border border-line rounded-xl overflow-hidden">
+
+                <!-- Cabecera del proyecto -->
+                <div
+                  class="flex items-center gap-3 px-5 py-3.5 border-b border-line-soft cursor-pointer select-none hover:bg-raised transition-colors"
+                  (click)="toggleProjectGroup(group.projectId)">
+                  <svg
+                    class="flex-shrink-0 text-ghost transition-transform duration-150"
+                    [style.transform]="collapsedGroups().has(group.projectId) ? 'rotate(-90deg)' : 'rotate(0deg)'"
+                    width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 4l4 4 4-4"/>
+                  </svg>
+                  <h2 class="text-[12.5px] font-semibold text-on flex-1">{{ group.projectName }}</h2>
+                  <span class="text-[13px] font-semibold text-tint tabular-nums">{{ group.totalHours | number:'1.0-1' }}h</span>
+                </div>
+
+                @if (!collapsedGroups().has(group.projectId)) {
+                  <div class="divide-y divide-line-soft">
+                    @for (item of group.items; track item.issue.id) {
+                      <div class="px-5 py-4">
+                        <div class="flex items-start justify-between gap-4 mb-2">
+                          <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="text-[11.5px] font-mono text-ghost flex-shrink-0">
+                              {{ item.issue.project.identifier }}-{{ item.issue.is_local ? 'L' + item.issue.local_id : item.issue.sequence_id }}
+                            </span>
+                            <span class="text-[13px] font-medium text-on truncate">{{ item.issue.name }}</span>
+                          </div>
+                          <span class="text-[13px] font-semibold text-dim flex-shrink-0 tabular-nums">{{ item.totalHours | number:'1.0-1' }}h</span>
+                        </div>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1">
+                          @for (entry of item.entries; track entry.id) {
+                            <span class="text-[11.5px] text-ghost">
+                              {{ entry.date | date:'d MMM' }}
+                              <span class="text-dim font-medium">{{ entry.hours | number:'1.0-1' }}h</span>
+                              @if (entry.note) { <span class="italic"> — {{ entry.note }}</span> }
+                            </span>
                           }
-                        </span>
-                      }
-                    </div>
+                        </div>
+                      </div>
+                    }
                   </div>
                 }
+
               </div>
-            </div>
+            }
           }
 
           @if (!s.totalHours) {
@@ -149,7 +192,8 @@ interface DateRange { from: string; to: string; }
 export class DashboardComponent {
   private readonly timeEntriesService = inject(TimeEntriesService);
 
-  readonly range = signal<DateRange>(monthRange());
+  readonly preset = signal<Preset>('week');
+  readonly range = signal<DateRange>(weekRange());
 
   readonly summaryResource = rxResource<DashboardSummary, DateRange>({
     params: () => this.range(),
@@ -163,7 +207,33 @@ export class DashboardComponent {
     return Math.max(...dates.map(d => d.hours), 1);
   });
 
-  setFrom(from: string) { this.range.update(r => ({ ...r, from })); }
-  setTo(to: string)     { this.range.update(r => ({ ...r, to })); }
-  resetToMonth()        { this.range.set(monthRange()); }
+  readonly collapsedGroups = signal<Set<string>>(new Set());
+
+  readonly projectGroups = computed((): ProjectGroup[] => {
+    const map = new Map<string, ProjectGroup>();
+    for (const item of this.summary()?.byIssue ?? []) {
+      const pid = item.issue.project.id;
+      if (!map.has(pid)) map.set(pid, { projectId: pid, projectName: item.issue.project.name, totalHours: 0, items: [] });
+      const g = map.get(pid)!;
+      g.items.push(item);
+      g.totalHours += item.totalHours;
+    }
+    return [...map.values()].sort((a, b) => b.totalHours - a.totalHours);
+  });
+
+  toggleProjectGroup(projectId: string) {
+    this.collapsedGroups.update(s => {
+      const next = new Set(s);
+      next.has(projectId) ? next.delete(projectId) : next.add(projectId);
+      return next;
+    });
+  }
+
+  setPreset(p: Preset) {
+    this.preset.set(p);
+    this.range.set(p === 'week' ? weekRange() : monthRange());
+  }
+
+  setFrom(from: string) { this.preset.set('custom'); this.range.update(r => ({ ...r, from })); }
+  setTo(to: string)     { this.preset.set('custom'); this.range.update(r => ({ ...r, to })); }
 }
