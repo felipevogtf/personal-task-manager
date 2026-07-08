@@ -65,6 +65,18 @@ export interface Issue {
   synced_at: string;
 }
 
+export interface DocumentMeta {
+  id: string;
+  title: string;
+  filename: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentFull extends DocumentMeta {
+  content: string;
+}
+
 export interface PasswordField {
   id: string;
   key: string | null;

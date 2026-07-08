@@ -37,7 +37,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
       <!-- Formulario clave individual -->
       @if (creatingMode() === 'single') {
         <div class="border-b border-line-soft bg-surface flex-shrink-0 px-6 py-4 flex flex-col gap-3">
-          <p class="text-[12px] font-semibold text-ghost uppercase tracking-widest">Nueva clave</p>
+          <p class="text-[12.5px] font-semibold text-ghost uppercase tracking-widest">Nueva clave</p>
           <div class="flex items-center gap-2.5 flex-wrap">
             <input
               type="text"
@@ -51,7 +51,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
               placeholder="Valor…"
               [value]="newEntry().fields[0]?.value"
               (input)="patchNewField(0, 'value', $any($event.target).value)" />
-            <label class="flex items-center gap-1.5 text-[12px] text-ghost cursor-pointer select-none whitespace-nowrap">
+            <label class="flex items-center gap-1.5 text-[12.5px] text-ghost cursor-pointer select-none whitespace-nowrap">
               <input type="checkbox"
                 [checked]="newEntry().fields[0]?.is_sensitive"
                 (change)="patchNewField(0, 'is_sensitive', !newEntry().fields[0]?.is_sensitive)"
@@ -73,7 +73,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
       <!-- Formulario grupo -->
       @if (creatingMode() === 'group') {
         <div class="border-b border-line-soft bg-surface flex-shrink-0 px-6 py-4 flex flex-col gap-3">
-          <p class="text-[12px] font-semibold text-ghost uppercase tracking-widest">Nuevo grupo</p>
+          <p class="text-[12.5px] font-semibold text-ghost uppercase tracking-widest">Nuevo grupo</p>
           <div class="flex items-center gap-2.5 flex-wrap">
             <input
               type="text"
@@ -104,7 +104,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                   placeholder="Valor…"
                   [value]="field.value"
                   (input)="patchNewField(i, 'value', $any($event.target).value)" />
-                <label class="flex items-center gap-1.5 text-[11.5px] text-ghost cursor-pointer select-none whitespace-nowrap">
+                <label class="flex items-center gap-1.5 text-[11px] text-ghost cursor-pointer select-none whitespace-nowrap">
                   <input type="checkbox" [checked]="field.is_sensitive" (change)="patchNewField(i, 'is_sensitive', !field.is_sensitive)" class="accent-tint" />
                   Sensible
                 </label>
@@ -115,7 +115,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                 </button>
               </div>
             }
-            <button class="self-start btn text-[12px]" (click)="addNewField()">+ Agregar campo</button>
+            <button class="self-start btn text-[12.5px]" (click)="addNewField()">+ Agregar campo</button>
           </div>
 
           <div class="flex items-center gap-2">
@@ -145,7 +145,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
             <!-- Single: fila inline -->
             <div class="bg-surface border border-line rounded-xl flex items-center group">
               <div class="flex items-center gap-1 px-4 py-3 w-[180px] flex-shrink-0 border-r border-line-soft group/key">
-                <span class="text-[13px] font-medium text-dim flex-1">{{ entry.name }}</span>
+                <span class="text-[11px] font-medium text-dim flex-1">{{ entry.name }}</span>
                 <button class="icon-btn opacity-0 group-hover/key:opacity-100 !w-[20px] !h-[20px]" title="Copiar llave" (click)="copyText(entry.name)">
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="5" y="5" width="9" height="9" rx="1.5"/>
@@ -155,7 +155,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
               </div>
               @for (field of entry.fields; track field.id) {
                 <div class="flex items-center gap-2 flex-1 px-4 py-3">
-                  <span class="text-[13px] text-on flex-1 font-mono">
+                  <span class="text-[11px] text-on flex-1 font-mono">
                     {{ field.is_sensitive ? (revealedValues().get(field.id) ?? '••••••••') : field.value_enc }}
                   </span>
                   @if (field.is_sensitive) {
@@ -206,7 +206,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                   width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 4l4 4 4-4"/>
                 </svg>
-                <span class="text-[13px] font-semibold text-on flex-1">{{ entry.name }}</span>
+                <span class="text-[11px] font-semibold text-on flex-1">{{ entry.name }}</span>
                 @if (entry.category) {
                   <span class="text-[11px] text-ghost bg-raised border border-line-soft px-2 py-0.5 rounded-full">{{ entry.category }}</span>
                 }
@@ -230,7 +230,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                   @for (field of sortedFields(entry); track field.id) {
                     <div class="flex items-center group/row">
                       <div class="flex items-center gap-1 px-4 py-2.5 w-[160px] flex-shrink-0 border-r border-line-soft group/key">
-                        <span class="text-[12px] text-ghost font-medium flex-1">{{ field.key }}</span>
+                        <span class="text-[12.5px] text-ghost font-medium flex-1">{{ field.key }}</span>
                         <button class="icon-btn opacity-0 group-hover/key:opacity-100 !w-[20px] !h-[20px]" title="Copiar llave" (click)="copyText(field.key)">
                           <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="5" y="5" width="9" height="9" rx="1.5"/>
@@ -239,7 +239,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                         </button>
                       </div>
                       <div class="flex items-center gap-2 flex-1 px-4 py-2.5">
-                        <span class="text-[13px] text-on flex-1 font-mono break-all">
+                        <span class="text-[11px] text-on flex-1 font-mono break-all">
                           {{ field.is_sensitive ? (revealedValues().get(field.id) ?? '••••••••') : field.value_enc }}
                         </span>
                         @if (field.is_sensitive) {
@@ -272,12 +272,12 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                   <!-- Inline add field -->
                   @if (addingFieldTo() === entry.id) {
                     <div class="flex items-center gap-2 px-4 py-2.5 bg-raised">
-                      <input type="text" class="field-input w-[150px] flex-shrink-0 text-[12px]"
+                      <input type="text" class="field-input w-[150px] flex-shrink-0 text-[12.5px]"
                         placeholder="Clave…"
                         [value]="inlineField().key"
                         (input)="patchInline('key', $any($event.target).value)" />
                       <input [type]="inlineField().is_sensitive ? 'password' : 'text'"
-                        class="field-input flex-1 text-[12px]"
+                        class="field-input flex-1 text-[12.5px]"
                         placeholder="Valor…"
                         [value]="inlineField().value"
                         (input)="patchInline('value', $any($event.target).value)"
@@ -293,7 +293,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                     </div>
                   } @else {
                     <button
-                      class="w-full text-left px-4 py-2.5 text-[12px] text-ghost hover:text-dim hover:bg-raised transition-colors"
+                      class="w-full text-left px-4 py-2.5 text-[12.5px] text-ghost hover:text-dim hover:bg-raised transition-colors"
                       (click)="startAddField(entry.id)">
                       + Agregar campo
                     </button>
@@ -311,7 +311,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                 <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
-            <p class="text-[14px] font-semibold text-on mb-1">Sin entradas</p>
+            <p class="text-[12.5px] font-semibold text-on mb-1">Sin entradas</p>
             <p class="text-[12.5px] text-ghost">Creá tu primera contraseña o grupo</p>
           </div>
         }
@@ -333,7 +333,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
            (click)="onEditBackdropClick($event)">
         <div class="bg-surface border border-line rounded-2xl shadow-xl p-6 w-[480px] flex flex-col gap-4 max-h-[80vh] overflow-y-auto"
              (click)="$event.stopPropagation()">
-          <h2 class="text-[14px] font-semibold text-on">Editar entrada</h2>
+          <h2 class="text-[12.5px] font-semibold text-on">Editar entrada</h2>
 
           <input type="text" class="field-input" placeholder="Nombre…"
             [value]="editName()"
@@ -346,12 +346,12 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
 
             @if (entry.fields.length) {
               <div class="flex flex-col gap-0 border border-line rounded-xl overflow-hidden">
-                <p class="px-3 py-2 text-[10.5px] font-semibold text-ghost uppercase tracking-widest border-b border-line-soft bg-raised">
+                <p class="px-3 py-2 text-[11px] font-semibold text-ghost uppercase tracking-widest border-b border-line-soft bg-raised">
                   Cambiar valores (dejá vacío para no modificar)
                 </p>
                 @for (field of sortedFields(entry); track field.id) {
                   <div class="flex items-center border-b border-line-soft last:border-0">
-                    <span class="px-3 py-2.5 text-[12px] text-ghost font-medium w-[140px] flex-shrink-0 border-r border-line-soft">
+                    <span class="px-3 py-2.5 text-[12.5px] text-ghost font-medium w-[140px] flex-shrink-0 border-r border-line-soft">
                       {{ field.key }}
                     </span>
                     <input
@@ -360,7 +360,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                       placeholder="Nuevo valor…"
                       [value]="editFieldValues().get(field.id) ?? ''"
                       (input)="patchEditField(field.id, $any($event.target).value)" />
-                    <label class="flex items-center gap-1.5 px-3 text-[11.5px] cursor-pointer select-none whitespace-nowrap"
+                    <label class="flex items-center gap-1.5 px-3 text-[11px] cursor-pointer select-none whitespace-nowrap"
                       [class.text-bad]="field.is_sensitive && !(editFieldSensitive().get(field.id) ?? field.is_sensitive) && !(editFieldValues().get(field.id) ?? '')"
                       [class.text-ghost]="!(field.is_sensitive && !(editFieldSensitive().get(field.id) ?? field.is_sensitive) && !(editFieldValues().get(field.id) ?? ''))">
                       <input type="checkbox"
@@ -377,7 +377,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
 
           @if (entry.type === 'single' && entry.fields[0]) {
             <div class="flex flex-col gap-2 border border-line rounded-xl overflow-hidden">
-              <p class="px-3 py-2 text-[10.5px] font-semibold text-ghost uppercase tracking-widest border-b border-line-soft bg-raised">
+              <p class="px-3 py-2 text-[11px] font-semibold text-ghost uppercase tracking-widest border-b border-line-soft bg-raised">
                 Cambiar valor (dejá vacío para no modificar)
               </p>
               <div class="flex items-center border-b border-line-soft">
@@ -387,7 +387,7 @@ interface NewEntryForm { name: string; type: 'single' | 'group'; category: strin
                   placeholder="Nuevo valor…"
                   [value]="editFieldValues().get(entry.fields[0].id) ?? ''"
                   (input)="patchEditField(entry.fields[0].id, $any($event.target).value)" />
-                <label class="flex items-center gap-1.5 px-3 text-[11.5px] text-ghost cursor-pointer select-none whitespace-nowrap">
+                <label class="flex items-center gap-1.5 px-3 text-[11px] text-ghost cursor-pointer select-none whitespace-nowrap">
                   <input type="checkbox"
                     [checked]="editFieldSensitive().get(entry.fields[0].id) ?? entry.fields[0].is_sensitive"
                     (change)="toggleEditSensitive(entry.fields[0].id)"

@@ -16,3 +16,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Documentos de usuario (no van al repo, solo el .gitkeep para que exista la carpeta)
+/documents/*.md

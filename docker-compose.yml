@@ -20,6 +20,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./backend/.env
+    volumes:
+      - ./documents:/documents
     restart: unless-stopped
 
   frontend:

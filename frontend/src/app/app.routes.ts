@@ -10,4 +10,5 @@ export const routes: Routes = [
   { path: 'boards', loadComponent: () => import('./pages/boards/boards.component').then(m => m.BoardsComponent) },
   { path: 'boards/:id', loadComponent: () => import('./pages/boards/board-detail/board-detail.component').then(m => m.BoardDetailComponent) },
   { path: 'passwords', loadComponent: () => import('./pages/passwords/passwords.component').then(m => m.PasswordsComponent) },
+  { path: 'documents', loadComponent: () => import('./pages/documents/documents.component').then(m => m.DocumentsComponent) },
 ];

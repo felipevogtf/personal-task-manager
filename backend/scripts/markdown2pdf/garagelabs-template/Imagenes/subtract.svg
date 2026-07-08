@@ -1,0 +1,10 @@
+<svg width="101" height="104" viewBox="0 0 101 104" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M2.1295 34.3751L16.1645 49.0269L0.554688 65.4944C6.21356 87.522 26.0236 103.78 50.7644 103.78C80.166 103.78 100.283 87.7077 100.283 50.2053H49.217V67.0432H78.6185C78.6185 67.4258 78.4251 67.8085 78.2317 68.1912C78.0382 68.5739 77.8448 68.9565 77.8448 69.3392C75.5236 80.0542 64.6915 86.177 51.5381 86.177C33.7425 86.177 19.8154 70.8699 19.8154 52.5014C19.8154 34.1329 33.7425 19.5911 51.5381 19.5911C60.0491 19.5911 68.5601 23.4179 73.9762 29.5408L88.677 16.5297C79.3923 6.58011 66.2389 0.457275 50.7644 0.457275C27.9499 0.457275 9.32827 14.7431 2.1295 34.3751Z" fill="white"/><style xmlns="" id="ztw-styles">
+  body, header, nav, main, aside, footer,
+  [class*="background"], [class*="wrapper"], [class*="container"] {
+    background-color: transparent !important;
+    background: none !important;
+    transition: background-color 0.5s ease-in-out, background 0.5s ease-in-out !important;
+  }
+</style>
+</svg>
